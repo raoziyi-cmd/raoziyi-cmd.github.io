@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="keywords" content="关于MSPM0的错误复盘, Epiphany&#39;s BLOG">
+    <meta name="keywords" content="junkcode题解, Epiphany&#39;s BLOG">
     <meta name="description" content="">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -16,7 +16,7 @@
     <!-- Global site tag (gtag.js) - Google Analytics -->
 
 
-    <title>关于MSPM0的错误复盘 | Epiphany&#39;s BLOG</title>
+    <title>junkcode题解 | Epiphany&#39;s BLOG</title>
     <link rel="icon" type="image/png" href="/favicon.png">
 
     <link rel="stylesheet" type="text/css" href="/libs/awesome/css/all.css">
@@ -310,12 +310,12 @@
 
 
 
-<div class="bg-cover pd-header post-cover" style="background-image: url('/medias/featureimages/5.jpg')">
+<div class="bg-cover pd-header post-cover" style="background-image: url('/medias/featureimages/0.jpg')">
     <div class="container" style="right: 0px;left: 0px;">
         <div class="row">
             <div class="col s12 m12 l12">
                 <div class="brand">
-                    <h1 class="description center-align post-title">关于MSPM0的错误复盘</h1>
+                    <h1 class="description center-align post-title">junkcode题解</h1>
                 </div>
             </div>
         </div>
@@ -431,8 +431,8 @@
                     
                     <div class="article-tag">
                         
-                            <a href="/tags/MSPM0G3507/">
-                                <span class="chip bg-color">MSPM0G3507</span>
+                            <a href="/tags/reverse/">
+                                <span class="chip bg-color">reverse</span>
                             </a>
                         
                     </div>
@@ -443,8 +443,8 @@
                     <div class="post-cate">
                         <i class="fas fa-bookmark fa-fw icon-category"></i>
                         
-                            <a href="/categories/%E5%8D%95%E7%89%87%E6%9C%BA/" class="post-category">
-                                单片机
+                            <a href="/categories/CTF/" class="post-category">
+                                CTF
                             </a>
                         
                     </div>
@@ -456,7 +456,7 @@
                 
                 <div class="post-date info-break-policy">
                     <i class="far fa-calendar-minus fa-fw"></i>发布日期:&nbsp;&nbsp;
-                    2026-02-12
+                    2026-02-13
                 </div>
                 
 
@@ -465,7 +465,7 @@
                 
                 <div class="info-break-policy">
                     <i class="far fa-file-word fa-fw"></i>文章字数:&nbsp;&nbsp;
-                    859
+                    524
                 </div>
                 
 
@@ -482,22 +482,16 @@
 
         <div class="card-content article-card-content">
             <div id="articleContent">
-                <p>这是一篇有关MSPM0G3507单片机的文章。这也是第一篇我在本博客的文章！本文将简单复盘在软件层面以MSPM0G3507单片机为载体，实现按键变档并显示的功能中的我遇到的2个现象及问题原因分析，下文将逐个分析。</p>
-<h2 id="问题一：pwm和oled同时出现在程序中就会卡死。"><a href="#问题一：pwm和oled同时出现在程序中就会卡死。" class="headerlink" title="问题一：pwm和oled同时出现在程序中就会卡死。"></a>问题一：pwm和oled同时出现在程序中就会卡死。</h2><p>出现这个问题要分析是硬件功能的问题还是软件时序等问题，我的程序现象是：oled+串口没问题，pwm+串口也没问题，但一旦pwm和oled同时出现在程序中就会卡死。那么根据这个现象分析，这几个单独封装的函数自身出现问题概率不高，因为其中两个功能组合没问题，更有可能出现在，系统整体搭配的问题。</p>
-<p>可能的原因很多常见的有以下几个（以下几点顺序仅为本程序逐步修复bug的分析顺序）：</p>
-<p><strong>第一点：中断优先级出错</strong><br>本程序设置均为default默认，本程序排除这点。</p>
-<p><strong>第二点：引脚复用问题</strong><br>本程序设置的引脚承担一个功能，本程序排除这点。</p>
-<p><strong>第三点：中断函数中用了过长的延时</strong><br>本程序存在在中断函数中用了过长的延时，中断函数最好遵循快进快出，延时过长会影响主程序。但我在去掉长延时之后程序仍然卡死。</p>
-<p><strong>第四点：systick配置与delay函数脱节</strong><br>本程序分析以上几点没有问题，只可能是陷入死循环，debug调试后，但中断函数没有问题，回去逐一排除配置，发现有关systick没有分析到，把有关函数丢给ai之后分析，systick高频抢断（ai说是内核级抢断）我的配置约为1s1500次，但是其中抢断后的判断逻辑是只有 “if(delay_times)!&#x3D;0;delay_times–;”但前面分析时候又去掉了delay的有关，也就是做没用的判断，被卡死了（我自己的理解可能有误）。关掉了这个systick，然后改成了最简单的忙等延时，于是问题解决了都能同步显示变档。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">SysTick_Handler</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>( delay_times != <span class="number">0</span> )</span><br><span class="line">    &#123;</span><br><span class="line">    delay_times--;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+                <p>本文将详细讲解SparkCTF训练赛的逆向题junkcode。总体本题比较基础，不过对于萌新作者也是写wp练习和记录（新手就是爱记录doge）。</p>
+<h2 id="Step1-查壳"><a href="#Step1-查壳" class="headerlink" title="Step1 查壳"></a>Step1 查壳</h2><p>re第一步用die查壳，查完如下图：<br><img src="/images/ctf/junkcode/1.png" alt="die查壳结果"><br>是个PE32的文件</p>
+<h2 id="Step2-查看反汇编"><a href="#Step2-查看反汇编" class="headerlink" title="Step2 查看反汇编"></a>Step2 查看反汇编</h2><p>用ida尝试打开发现，甚至打不开（至少我打不开），似乎印证了junkcode这个名字，用别的反汇编工具试试看，我用的是Ghidra，打开后能看到伪代码，如下图：<br><img src="/images/ctf/junkcode/2.png" alt="Ghidra反汇编"><br>但是我没看到明显的提示词flag，wrong。所以先放一边吧（其实能看出来加密逻辑，但没有关键词还需确认）</p>
+<h2 id="Step3-用x32dbg"><a href="#Step3-用x32dbg" class="headerlink" title="Step3 用x32dbg"></a>Step3 用x32dbg</h2><p>既然反汇编工具没法直接解出答案，那就丢到x32里面看看。进入后直接找flag，wrong字段，找到后直接跳转。<br><img src="/images/ctf/junkcode/3.png" alt="找字段"><br><img src="/images/ctf/junkcode/4.png" alt="主要程序"><br>00385D95 位置有387B4C:”%16s”，因此长度是16。在输入flag到判断wrong之间的call，就是加密逻辑的可能位置。</p>
+<p>（这里的做题思路是从逆推从比较结果的call函数，再到后八位加密的call函数，再到前八位加密的call函数，这里是知道答案了，我的输入才是flag{..},正常是随便输入的16位）</p>
+<p>在每个call逐步寻找后，发现在00385D76位置的汇编是第一部分前八位的加密，只对 flag 的前 8 个字节进行异或加密，加密密钥是12345678（看寄存器）。00385DC6位置的汇编是第二部分后 8 个字节进行异或加密，加密密钥是12345678，不过顺序是逆序的。<br><img src="/images/ctf/junkcode/5.png" alt="前半段程序"><br><img src="/images/ctf/junkcode/6.png" alt="后半段程序"><br>00385DD2是比较flag函数部分。找到cmp，密文是在0038A00位置如下0x57,0x5E,0x52,0x53,0x4E,0x5C,0x42,0x56, 0x53,0x54,0x59,0x51,0x51,0x40,0x13,0x4C。<br><img src="/images/ctf/junkcode/7.png" alt="比较部分"></p>
+<h2 id="Step4-脚本"><a href="#Step4-脚本" class="headerlink" title="Step4 脚本"></a>Step4 脚本</h2><p>找到数据和加密逻辑后写脚本</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">check = [<span class="number">0x57</span>,<span class="number">0x5E</span>,<span class="number">0x52</span>,<span class="number">0x53</span>,<span class="number">0x4E</span>,<span class="number">0x5C</span>,<span class="number">0x42</span>,<span class="number">0x56</span>,<span class="number">0x53</span>,<span class="number">0x54</span>,<span class="number">0x59</span>,<span class="number">0x51</span>,<span class="number">0x51</span>,<span class="number">0x40</span>,<span class="number">0x13</span>,<span class="number">0x4C</span>]</span><br><span class="line">key = [<span class="number">0x31</span>,<span class="number">0x32</span>,<span class="number">0x33</span>,<span class="number">0x34</span>,<span class="number">0x35</span>,<span class="number">0x36</span>,<span class="number">0x37</span>,<span class="number">0x38</span>,<span class="number">0x38</span>,<span class="number">0x37</span>,<span class="number">0x36</span>,<span class="number">0x35</span>,<span class="number">0x34</span>,<span class="number">0x33</span>,<span class="number">0x32</span>,<span class="number">0x31</span>]</span><br><span class="line">flag = []</span><br><span class="line"><span class="keyword">for</span> i in range(<span class="number">16</span>):</span><br><span class="line">    flag_char_code = check[i] ^ key[i]</span><br><span class="line">    flag_char = chr(flag_char_code)</span><br><span class="line">    flag.append(flag_char)</span><br><span class="line">final_flag =  <span class="string">&#x27;&#x27;.join(flag)</span></span><br><span class="line"><span class="string">print( final_flag)</span></span><br></pre></td></tr></table></figure>
 
-<h2 id="问题二：程序在能实现按键实现变档且oled-串口均能显示变档情况下，存在跳档现象。"><a href="#问题二：程序在能实现按键实现变档且oled-串口均能显示变档情况下，存在跳档现象。" class="headerlink" title="问题二：程序在能实现按键实现变档且oled+串口均能显示变档情况下，存在跳档现象。"></a>问题二：程序在能实现按键实现变档且oled+串口均能显示变档情况下，存在跳档现象。</h2><p>这个一开始没找到原因以为是误触，实际上加上了延时后还是一样。分析功能可以部分实现，但有时跳档可能是cpu没有反应过来，因为我的oled和pwm变档都在while中，只有串口变化是在if（判断变档了）之中的，（也就是不需要一直执行）判断一下为真才执行。如下：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>（）</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>（判断变档了）</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//有关串口代码;</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//有关oled代码;</span></span><br><span class="line">    <span class="comment">//有关pwm代码;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>于是我就把oled显示变档放到if里面，如下：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>（）</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>（判断变档了）</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//有关串口代码;</span></span><br><span class="line">        <span class="comment">//有关oled代码;</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//有关pwm代码;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>只要判断变档了，才刷新串口和oled，不是一直刷新抢占资源。改完后能实现0-1-2-3-4-0-1…顺序变档。</p>
-<p>本文仅记录学习心得，如有理解不当或错误，欢迎积极指出，讨论！</p>
+<p>运行解得答案flag{junkcodes!}</p>
 
                 
             </div>
@@ -524,7 +518,7 @@
                     </i>
                 </span>
                 <span class="reprint-info">
-                    <a href="https://raoziyi-cmd.github.io/2026/02/12/%E5%85%B3%E4%BA%8EMSPM0%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%8D%E7%9B%98/">https://raoziyi-cmd.github.io/2026/02/12/%E5%85%B3%E4%BA%8EMSPM0%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%8D%E7%9B%98/</a>
+                    <a href="https://raoziyi-cmd.github.io/2026/02/13/junkcode's_wp/">https://raoziyi-cmd.github.io/2026/02/13/junkcode's_wp/</a>
                 </span>
             </div>
             <div class="reprint__notice">
@@ -562,8 +556,8 @@
                     
                         <div class="article-tag">
                             
-                                <a href="/tags/MSPM0G3507/">
-                                    <span class="chip bg-color">MSPM0G3507</span>
+                                <a href="/tags/reverse/">
+                                    <span class="chip bg-color">reverse</span>
                                 </a>
                             
                         </div>
@@ -733,9 +727,10 @@
 <article id="prenext-posts" class="prev-next articles">
     <div class="row article-row">
         
-        <div class="article col s12 m6" data-aos="fade-up">
+        <div class="article col s12 m6" data-aos="fade-up" data-aos="fade-up">
             <div class="article-badge left-badge text-color">
-                <i class="fas fa-chevron-left"></i>&nbsp;上一篇</div>
+                <i class="far fa-dot-circle"></i>&nbsp;本篇
+            </div>
             <div class="card">
                 <a href="/2026/02/13/junkcode's_wp/">
                     <div class="card-image">
@@ -753,9 +748,9 @@
                         
                     </div>
                     <div class="publish-info">
-                        <span class="publish-date">
-                            <i class="far fa-clock fa-fw icon-date"></i>2026-02-13
-                        </span>
+                            <span class="publish-date">
+                                <i class="far fa-clock fa-fw icon-date"></i>2026-02-13
+                            </span>
                         <span class="publish-author">
                             
                             <i class="fas fa-bookmark fa-fw icon-category"></i>
@@ -768,6 +763,7 @@
                         </span>
                     </div>
                 </div>
+
                 
                 <div class="card-action article-tags">
                     
@@ -783,7 +779,7 @@
         
         <div class="article col s12 m6" data-aos="fade-up">
             <div class="article-badge right-badge text-color">
-                本篇&nbsp;<i class="far fa-dot-circle"></i>
+                下一篇&nbsp;<i class="fas fa-chevron-right"></i>
             </div>
             <div class="card">
                 <a href="/2026/02/12/%E5%85%B3%E4%BA%8EMSPM0%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%8D%E7%9B%98/">
@@ -817,7 +813,6 @@
                         </span>
                     </div>
                 </div>
-
                 
                 <div class="card-action article-tags">
                     

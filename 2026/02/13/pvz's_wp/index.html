@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="keywords" content="junkcode题解, Epiphany&#39;s BLOG">
+    <meta name="keywords" content="pvz题解, Epiphany&#39;s BLOG">
     <meta name="description" content="">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -16,7 +16,7 @@
     <!-- Global site tag (gtag.js) - Google Analytics -->
 
 
-    <title>junkcode题解 | Epiphany&#39;s BLOG</title>
+    <title>pvz题解 | Epiphany&#39;s BLOG</title>
     <link rel="icon" type="image/png" href="/favicon.png">
 
     <link rel="stylesheet" type="text/css" href="/libs/awesome/css/all.css">
@@ -310,12 +310,12 @@
 
 
 
-<div class="bg-cover pd-header post-cover" style="background-image: url('/medias/featureimages/0.jpg')">
+<div class="bg-cover pd-header post-cover" style="background-image: url('/medias/featureimages/15.jpg')">
     <div class="container" style="right: 0px;left: 0px;">
         <div class="row">
             <div class="col s12 m12 l12">
                 <div class="brand">
-                    <h1 class="description center-align post-title">junkcode题解</h1>
+                    <h1 class="description center-align post-title">pvz题解</h1>
                 </div>
             </div>
         </div>
@@ -465,7 +465,7 @@
                 
                 <div class="info-break-policy">
                     <i class="far fa-file-word fa-fw"></i>文章字数:&nbsp;&nbsp;
-                    524
+                    942
                 </div>
                 
 
@@ -482,17 +482,14 @@
 
         <div class="card-content article-card-content">
             <div id="articleContent">
-                <p>本文将详细讲解SparkCTF训练赛的逆向题junkcode。总体本题比较基础，不过对于萌新作者也是写wp练习和记录（新手就是爱记录doge）。</p>
-<h2 id="Step1-查壳"><a href="#Step1-查壳" class="headerlink" title="Step1 查壳"></a>Step1 查壳</h2><p>re第一步用die查壳，查完如下图：<br><img src="/images/ctf/junkcode/1.png" alt="die查壳结果"><br>是个PE32的文件</p>
-<h2 id="Step2-查看反汇编"><a href="#Step2-查看反汇编" class="headerlink" title="Step2 查看反汇编"></a>Step2 查看反汇编</h2><p>用ida尝试打开发现，甚至打不开（至少我打不开），似乎印证了junkcode这个名字，用别的反汇编工具试试看，我用的是Ghidra，打开后能看到伪代码，如下图：<br><img src="/images/ctf/junkcode/2.png" alt="Ghidra反汇编"><br>但是我没看到明显的提示词flag，wrong。所以先放一边吧（其实能看出来加密逻辑，但没有关键词还需确认）</p>
-<h2 id="Step3-用x32dbg"><a href="#Step3-用x32dbg" class="headerlink" title="Step3 用x32dbg"></a>Step3 用x32dbg</h2><p>既然反汇编工具没法直接解出答案，那就丢到x32里面看看。进入后直接找flag，wrong字段，找到后直接跳转。<br><img src="/images/ctf/junkcode/3.png" alt="找字段"><br><img src="/images/ctf/junkcode/4.png" alt="主要程序"><br>00385D95 位置有387B4C:”%16s”，因此长度是16。在输入flag到判断wrong之间的call，就是加密逻辑的可能位置。</p>
-<p>（这里的做题思路是从逆推从比较结果的call函数，再到后八位加密的call函数，再到前八位加密的call函数，这里是知道答案了，我的输入才是flag{..},正常是随便输入的16位）</p>
-<p>在每个call逐步寻找后，发现在00385D76位置的汇编是第一部分前八位的加密，只对 flag 的前 8 个字节进行异或加密，加密密钥是12345678（看寄存器）。00385DC6位置的汇编是第二部分后 8 个字节进行异或加密，加密密钥是12345678，不过顺序是逆序的。<br><img src="/images/ctf/junkcode/5.png" alt="前半段程序"><br><img src="/images/ctf/junkcode/6.png" alt="后半段程序"><br>00385DD2是比较flag函数部分。找到cmp，密文是在0038A00位置如下0x57,0x5E,0x52,0x53,0x4E,0x5C,0x42,0x56, 0x53,0x54,0x59,0x51,0x51,0x40,0x13,0x4C。<br><img src="/images/ctf/junkcode/7.png" alt="比较部分"></p>
-<h2 id="Step4-脚本"><a href="#Step4-脚本" class="headerlink" title="Step4 脚本"></a>Step4 脚本</h2><p>找到数据和加密逻辑后写脚本</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">check = [<span class="number">0x57</span>,<span class="number">0x5E</span>,<span class="number">0x52</span>,<span class="number">0x53</span>,<span class="number">0x4E</span>,<span class="number">0x5C</span>,<span class="number">0x42</span>,<span class="number">0x56</span>,<span class="number">0x53</span>,<span class="number">0x54</span>,<span class="number">0x59</span>,<span class="number">0x51</span>,<span class="number">0x51</span>,<span class="number">0x40</span>,<span class="number">0x13</span>,<span class="number">0x4C</span>]</span><br><span class="line">key = [<span class="number">0x31</span>,<span class="number">0x32</span>,<span class="number">0x33</span>,<span class="number">0x34</span>,<span class="number">0x35</span>,<span class="number">0x36</span>,<span class="number">0x37</span>,<span class="number">0x38</span>,<span class="number">0x38</span>,<span class="number">0x37</span>,<span class="number">0x36</span>,<span class="number">0x35</span>,<span class="number">0x34</span>,<span class="number">0x33</span>,<span class="number">0x32</span>,<span class="number">0x31</span>]</span><br><span class="line">flag = []</span><br><span class="line"><span class="keyword">for</span> i in range(<span class="number">16</span>):</span><br><span class="line">    flag_char_code = check[i] ^ key[i]</span><br><span class="line">    flag_char = chr(flag_char_code)</span><br><span class="line">    flag.append(flag_char)</span><br><span class="line">final_flag =  <span class="string">&#x27;&#x27;.join(flag)</span></span><br><span class="line"><span class="string">print( final_flag)</span></span><br></pre></td></tr></table></figure>
-
-<p>运行解得答案flag{junkcodes!}</p>
-
+                <p>本文将简单分析训练赛的逆向题pvz。</p>
+<h2 id="Step1-查壳"><a href="#Step1-查壳" class="headerlink" title="Step1 查壳"></a>Step1 查壳</h2><p>re第一步用die查壳，查完如下图：<br><img src="/images/ctf/pvz/1.png" alt="die查壳结果"><br>是个PE32的java文件</p>
+<h2 id="Step2-查看反汇编"><a href="#Step2-查看反汇编" class="headerlink" title="Step2 查看反汇编"></a>Step2 查看反汇编</h2><p>die查出来是java语言，那就先从java层判断，如果不在java层就查看更加底层的native层。直接放到jadx里面搜flag字段寻找加密逻辑，找到flagscreen类<br><img src="/images/ctf/pvz/2.png" alt="flagscreen类"></p>
+<p>分析加密逻辑，步骤1：用击杀数派生解密密钥；步骤2：用派生密钥解密加密字节数组；步骤3：分段 XOR 解密（双密钥）；步骤4：简易 AES 解密（实际是 XOR）；步骤5：字节数组转字符串（UTF-8）；步骤6：旋转解密（字母偏移还原；步骤7：字符映射；步骤8：验证结果。</p>
+<h2 id="Step3-脚本"><a href="#Step3-脚本" class="headerlink" title="Step3 脚本"></a>Step3 脚本</h2><p>脚本需要爆破的值有Seed（步骤1）和Rotation Offset（步骤6）需要两个for爆破，然后最后判定是不是flag{}格式</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line">import sys</span><br><span class="line"></span><br><span class="line">cipher_signed = [<span class="number">0</span>, <span class="number">-8</span>, <span class="number">-6</span>, <span class="number">6</span>, <span class="number">31</span>, <span class="number">-39</span>, <span class="number">-104</span>, <span class="number">114</span>, <span class="number">86</span>, <span class="number">-23</span>, <span class="number">-35</span>, <span class="number">28</span>, <span class="number">-122</span>, <span class="number">56</span>, <span class="number">29</span>, <span class="number">-126</span>, <span class="number">-29</span>, <span class="number">94</span>, <span class="number">23</span>, <span class="number">-29</span>, <span class="number">46</span>, <span class="number">-126</span>, <span class="number">-4</span>, <span class="number">45</span>, <span class="number">20</span>, <span class="number">-57</span>]</span><br><span class="line">cipher = [b &amp; <span class="number">0xFF</span> <span class="keyword">for</span> b in cipher_signed]# 有符号转无符号字节</span><br><span class="line">aes_key_signed = [<span class="number">74</span>, <span class="number">-111</span>, <span class="number">-61</span>, <span class="number">127</span>, <span class="number">46</span>, <span class="number">-75</span>, <span class="number">104</span>, <span class="number">-44</span>, <span class="number">28</span>, <span class="number">-119</span>, <span class="number">58</span>, <span class="number">-14</span>, <span class="number">93</span>, <span class="number">-90</span>, <span class="number">113</span>, <span class="number">-66</span>]</span><br><span class="line">aes_key = [b &amp; <span class="number">0xFF</span> <span class="keyword">for</span> b in aes_key_signed]  # 有符号转无符号字节</span><br><span class="line"></span><br><span class="line">XOR_KEY1 = <span class="number">102</span></span><br><span class="line">XOR_KEY2 = <span class="number">119</span></span><br><span class="line"></span><br><span class="line"># 构建替换表</span><br><span class="line">forward_map = &#123;</span><br><span class="line">    <span class="string">&#x27;A&#x27;</span>:<span class="string">&#x27;Q&#x27;</span>, <span class="string">&#x27;B&#x27;</span>:<span class="string">&#x27;W&#x27;</span>, <span class="string">&#x27;C&#x27;</span>:<span class="string">&#x27;E&#x27;</span>, <span class="string">&#x27;D&#x27;</span>:<span class="string">&#x27;R&#x27;</span>, <span class="string">&#x27;E&#x27;</span>:<span class="string">&#x27;T&#x27;</span>, <span class="string">&#x27;F&#x27;</span>:<span class="string">&#x27;Y&#x27;</span>, <span class="string">&#x27;G&#x27;</span>:<span class="string">&#x27;U&#x27;</span>, </span><br><span class="line">    <span class="string">&#x27;H&#x27;</span>:<span class="string">&#x27;I&#x27;</span>, <span class="string">&#x27;I&#x27;</span>:<span class="string">&#x27;O&#x27;</span>, <span class="string">&#x27;J&#x27;</span>:<span class="string">&#x27;P&#x27;</span>, <span class="string">&#x27;K&#x27;</span>:<span class="string">&#x27;A&#x27;</span>, <span class="string">&#x27;L&#x27;</span>:<span class="string">&#x27;S&#x27;</span>, <span class="string">&#x27;M&#x27;</span>:<span class="string">&#x27;D&#x27;</span>, <span class="string">&#x27;N&#x27;</span>:<span class="string">&#x27;F&#x27;</span>, </span><br><span class="line">    <span class="string">&#x27;O&#x27;</span>:<span class="string">&#x27;G&#x27;</span>, <span class="string">&#x27;P&#x27;</span>:<span class="string">&#x27;H&#x27;</span>, <span class="string">&#x27;Q&#x27;</span>:<span class="string">&#x27;J&#x27;</span>, <span class="string">&#x27;R&#x27;</span>:<span class="string">&#x27;K&#x27;</span>, <span class="string">&#x27;S&#x27;</span>:<span class="string">&#x27;L&#x27;</span>, <span class="string">&#x27;T&#x27;</span>:<span class="string">&#x27;Z&#x27;</span>, <span class="string">&#x27;U&#x27;</span>:<span class="string">&#x27;X&#x27;</span>, </span><br><span class="line">    <span class="string">&#x27;V&#x27;</span>:<span class="string">&#x27;C&#x27;</span>, <span class="string">&#x27;W&#x27;</span>:<span class="string">&#x27;V&#x27;</span>, <span class="string">&#x27;X&#x27;</span>:<span class="string">&#x27;B&#x27;</span>, <span class="string">&#x27;Y&#x27;</span>:<span class="string">&#x27;N&#x27;</span>, <span class="string">&#x27;Z&#x27;</span>:<span class="string">&#x27;M&#x27;</span>, <span class="string">&#x27;_&#x27;</span>:<span class="string">&#x27;!&#x27;</span>, <span class="string">&#x27;&#123;&#x27;</span>:<span class="string">&#x27;[&#x27;</span>, <span class="string">&#x27;&#125;&#x27;</span>:<span class="string">&#x27;]&#x27;</span></span><br><span class="line">&#125;</span><br><span class="line">reverse_map = &#123;v: k <span class="keyword">for</span> k, v in forward_map.items()&#125;#（加密正向，解密反向）ai说这个是反向表</span><br><span class="line"></span><br><span class="line"># LCG生成函数</span><br><span class="line">def generate_lcg_key_full(seed):</span><br><span class="line">    key = []</span><br><span class="line">    val = seed</span><br><span class="line">    <span class="keyword">for</span> _ in range(<span class="number">16</span>):</span><br><span class="line">        val = ((val * <span class="number">1103515245</span>) + <span class="number">12345</span>) &amp; <span class="number">0x7FFFFFFF</span></span><br><span class="line">        key.append((val &gt;&gt; <span class="number">16</span>) % <span class="number">256</span>)</span><br><span class="line">    <span class="keyword">return</span> key</span><br><span class="line"></span><br><span class="line"># 完整解密函数</span><br><span class="line">def full_decrypt(seed, rot):</span><br><span class="line">    lcg_key = generate_lcg_key_full(seed)</span><br><span class="line">    final_str = <span class="string">&quot;&quot;</span></span><br><span class="line">    mid_point = len(cipher) <span class="comment">// 2 # 整数除法运算符</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> i in range(len(cipher)):</span><br><span class="line">        # <span class="number">1.</span> LCG层解密：密文 ^ LCG密钥 ^ 魔法值</span><br><span class="line">        k = lcg_key[i % <span class="number">16</span>]</span><br><span class="line">        m = ((i * <span class="number">13</span>) + <span class="number">7</span>) % <span class="number">256</span></span><br><span class="line">        val = cipher[i] ^ k ^ m</span><br><span class="line">        </span><br><span class="line">        # <span class="number">2.</span> 分段XOR层解密：前半用XOR_KEY1，后半用XOR_KEY2</span><br><span class="line">        key_to_use = XOR_KEY1 <span class="keyword">if</span> i &lt; mid_point <span class="keyword">else</span> XOR_KEY2</span><br><span class="line">        val = val ^ key_to_use</span><br><span class="line">        </span><br><span class="line">        # <span class="number">3.</span> AES层解密（实际是XOR）</span><br><span class="line">        val = val ^ aes_key[i % <span class="number">16</span>]</span><br><span class="line">        </span><br><span class="line">        # <span class="number">4.</span> 旋转层解密：字母偏移还原</span><br><span class="line">        c = chr(val)</span><br><span class="line">        <span class="keyword">if</span> <span class="string">&#x27;A&#x27;</span> &lt;= c &lt;= <span class="string">&#x27;Z&#x27;</span>:</span><br><span class="line">            c = chr(<span class="number">65</span> + (ord(c) - <span class="number">65</span> - rot + <span class="number">26</span>) % <span class="number">26</span>)</span><br><span class="line">        elif <span class="string">&#x27;a&#x27;</span> &lt;= c &lt;= <span class="string">&#x27;z&#x27;</span>:</span><br><span class="line">            c = chr(<span class="number">97</span> + (ord(c) - <span class="number">97</span> - rot + <span class="number">26</span>) % <span class="number">26</span>)</span><br><span class="line">        </span><br><span class="line">        # <span class="number">5.</span> 字符映射层解密：反向替换</span><br><span class="line">        c = reverse_map.get(c, c)</span><br><span class="line">        final_str += c</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> final_str</span><br><span class="line"></span><br><span class="line"># 验证flag格式函数</span><br><span class="line">def is_valid_flag(flag_str):</span><br><span class="line">    # 条件<span class="number">1</span>：flag&#123;</span><br><span class="line">    <span class="keyword">if</span> not flag_str.startswith(<span class="string">&quot;flag&#123;&quot;</span>):</span><br><span class="line">        <span class="keyword">return</span> False</span><br><span class="line">    # 条件<span class="number">2</span>：&#125;</span><br><span class="line">    <span class="keyword">if</span> not flag_str.endswith(<span class="string">&quot;&#125;&quot;</span>):</span><br><span class="line">        <span class="keyword">return</span> False</span><br><span class="line">    <span class="keyword">return</span> True</span><br><span class="line"></span><br><span class="line">found_solution = False</span><br><span class="line"></span><br><span class="line"># <span class="number">1.</span> 遍历所有Rotation Offset (<span class="number">0</span><span class="number">-25</span>)</span><br><span class="line"><span class="keyword">for</span> rot in range(<span class="number">26</span>):</span><br><span class="line">    # <span class="number">2.</span> 遍历所有Seed (<span class="number">0</span><span class="number">-65535</span>)</span><br><span class="line">    <span class="keyword">for</span> seed in range(<span class="number">65536</span>):</span><br><span class="line">        # <span class="number">3.</span> 执行完整解密</span><br><span class="line">        decrypted_str = full_decrypt(seed, rot)</span><br><span class="line">        # <span class="number">4.</span> 验证是否是合法flag格式</span><br><span class="line">        <span class="keyword">if</span> is_valid_flag(decrypted_str):</span><br><span class="line">            # 找到唯一解，输出结果</span><br><span class="line">            print(f<span class="string">&quot;Seed: &#123;seed&#125;&quot;</span>)</span><br><span class="line">            print(f<span class="string">&quot;Rotation Offset: &#123;rot&#125;&quot;</span>)</span><br><span class="line">            print(f<span class="string">&quot;Flag: &#123;decrypted_str&#125;&quot;</span>)</span><br><span class="line">            print(f<span class="string">&quot;Display Flag: &#123;decrypted_str.replace(&#x27;flag&#x27;, &#x27;hgame&#x27;)&#125;&quot;</span>)</span><br><span class="line">            found_solution = True</span><br><span class="line">            <span class="keyword">break</span>  # 终止Seed遍历</span><br><span class="line">    <span class="keyword">if</span> found_solution:</span><br><span class="line">        <span class="keyword">break</span>  # 终止Rotation遍历</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> not found_solution:</span><br><span class="line">    print(<span class="string">&quot;未找到有效组合&quot;</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>脚本是学长和ai辅助的，自己写了点，运行解得答案（运行速度比较慢毕竟是暴力循环）</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Seed: <span class="number">3504</span></span><br><span class="line">Rotation Offset: <span class="number">20</span></span><br><span class="line">Flag: flag&#123;BECAUSE_I_AM_CRAAAZY&#125;</span><br><span class="line">Display Flag: hgame&#123;BECAUSE_I_AM_CRAAAZY&#125;</span><br></pre></td></tr></table></figure>
                 
             </div>
             <hr/>
@@ -518,7 +515,7 @@
                     </i>
                 </span>
                 <span class="reprint-info">
-                    <a href="https://raoziyi-cmd.github.io/2026/02/13/junkcode's_wp/">https://raoziyi-cmd.github.io/2026/02/13/junkcode's_wp/</a>
+                    <a href="https://raoziyi-cmd.github.io/2026/02/13/pvz's_wp/">https://raoziyi-cmd.github.io/2026/02/13/pvz's_wp/</a>
                 </span>
             </div>
             <div class="reprint__notice">
@@ -727,10 +724,9 @@
 <article id="prenext-posts" class="prev-next articles">
     <div class="row article-row">
         
-        <div class="article col s12 m6" data-aos="fade-up" data-aos="fade-up">
+        <div class="article col s12 m6" data-aos="fade-up">
             <div class="article-badge left-badge text-color">
-                <i class="far fa-dot-circle"></i>&nbsp;本篇
-            </div>
+                <i class="fas fa-chevron-left"></i>&nbsp;上一篇</div>
             <div class="card">
                 <a href="/2026/02/13/junkcode's_wp/">
                     <div class="card-image">
@@ -748,9 +744,9 @@
                         
                     </div>
                     <div class="publish-info">
-                            <span class="publish-date">
-                                <i class="far fa-clock fa-fw icon-date"></i>2026-02-13
-                            </span>
+                        <span class="publish-date">
+                            <i class="far fa-clock fa-fw icon-date"></i>2026-02-13
+                        </span>
                         <span class="publish-author">
                             
                             <i class="fas fa-bookmark fa-fw icon-category"></i>
@@ -763,7 +759,6 @@
                         </span>
                     </div>
                 </div>
-
                 
                 <div class="card-action article-tags">
                     
@@ -782,13 +777,13 @@
                 下一篇&nbsp;<i class="fas fa-chevron-right"></i>
             </div>
             <div class="card">
-                <a href="/2026/02/13/pvz's_wp/">
+                <a href="/2026/02/12/%E5%85%B3%E4%BA%8EMSPM0%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%8D%E7%9B%98/">
                     <div class="card-image">
                         
                         
-                        <img src="/medias/featureimages/15.jpg" class="responsive-img" alt="pvz题解">
+                        <img src="/medias/featureimages/5.jpg" class="responsive-img" alt="关于MSPM0的错误复盘">
                         
-                        <span class="card-title">pvz题解</span>
+                        <span class="card-title">关于MSPM0的错误复盘</span>
                     </div>
                 </a>
                 <div class="card-content article-content">
@@ -799,14 +794,14 @@
                     </div>
                     <div class="publish-info">
                             <span class="publish-date">
-                                <i class="far fa-clock fa-fw icon-date"></i>2026-02-13
+                                <i class="far fa-clock fa-fw icon-date"></i>2026-02-12
                             </span>
                         <span class="publish-author">
                             
                             <i class="fas fa-bookmark fa-fw icon-category"></i>
                             
-                            <a href="/categories/CTF/" class="post-category">
-                                    CTF
+                            <a href="/categories/%E5%8D%95%E7%89%87%E6%9C%BA/" class="post-category">
+                                    单片机
                                 </a>
                             
                             
@@ -816,8 +811,8 @@
                 
                 <div class="card-action article-tags">
                     
-                    <a href="/tags/reverse/">
-                        <span class="chip bg-color">reverse</span>
+                    <a href="/tags/MSPM0G3507/">
+                        <span class="chip bg-color">MSPM0G3507</span>
                     </a>
                     
                 </div>
